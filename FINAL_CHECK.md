@@ -1,29 +1,20 @@
-# 🔍 FINAL CHECK: The New Client ID
+# ⚠️ URGENT ACTION REQUIRED ⚠️
 
-You have successfully updated the code with the new Client ID:
-`...s1mvfuf3ku7vqitdgq22jl137udqqipe.apps.googleusercontent.com`
+You said **NO**. This means **Google Login will FAIL** until you do this.
 
-However, **creating** the ID is not enough. You must **configure** it too.
+## 👉 DO THIS RIGHT NOW:
 
-## ⚡ STEP 1: Configure the NEW ID in Google Cloud
-1.  Go to **[Google Cloud Console](https://console.cloud.google.com/apis/credentials)**.
-2.  Find the Client ID that matches your new one (ends in `...qqipe`).
-3.  **Click its name** to edit it.
-4.  Scroll to **"Authorized JavaScript origins"**.
-5.  **You MUST add these two links again** (because it's a new ID):
-    *   `https://visualai.vercel.app`
-    *   `http://localhost:5173`
-6.  **Click SAVE**.
+1.  Click this link: **[https://console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)**
+2.  Click the name of your **NEW** Client ID (the one ending in `...qqipe`).
+3.  Scroll down to **"Authorized JavaScript origins"**.
+4.  Click **ADD URI**.
+5.  Paste this **EXACT** link:
+    `https://visualai.vercel.app`
+6.  Click **ADD URI** (again).
+7.  Paste this one too:
+    `http://localhost:5173`
+8.  **CLICK SAVE.**
 
-## ⚡ STEP 2: Wait for Vercel
-Your code has been pushed to GitHub. Vercel automatically detects this and starts a **New build**.
-1.  Go to [Vercel Dashboard](https://vercel.com/dashboard).
-2.  Click your project.
-3.  Look at the "Deployment" status. Is it "Building" or "Ready"?
-4.  If "Ready", click **Visit**.
-
-### 🛑 Still failing?
-If you did Step 1 and Step 2, and it still doesn't work:
-*   **Clear Browser Cache**.
-*   Open an **Incognito Window**.
-*   Try Logging in.
+---
+### 🛑 DO NOT PROCEED UNTIL YOU CLICK SAVE.
+If you don't do this, your users will see "Error: Origin Mismatch".

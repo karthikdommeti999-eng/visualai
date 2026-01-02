@@ -100,15 +100,19 @@ export const Login = () => {
                             <GoogleLogin
                                 onSuccess={async (credentialResponse) => {
                                     try {
+                                        console.log("Google response received", credentialResponse);
                                         await handleGoogleLogin(credentialResponse);
                                         navigate('/dashboard');
                                     } catch (err) {
-                                        console.error(err);
-                                        setError('Google Login Failed');
+                                        console.error("Login Logic Error:", err);
+                                        alert("Login Logic Error: " + err.message);
+                                        setError('Google Login Failed: ' + err.message);
                                     }
                                 }}
                                 onError={() => {
-                                    setError('Google Login Failed');
+                                    console.error("Google Login OnError Triggered");
+                                    alert("Google Popup Failed. Please check console for GSI_LOGGER errors. Origins might still be mismatching.");
+                                    setError('Google Popup Failed');
                                 }}
                                 theme="filled_black"
                                 shape="pill"
