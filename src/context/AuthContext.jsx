@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     reject(new Error("Invalid credentials"));
                 }
-            }, 800);
+            }, 50);
         });
     };
 
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         // Simulate API call
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                if (email && password) {
+                if (email) {
                     const fakeUser = { name, email, notifications: true }; // Default notifications on
                     setUser(fakeUser);
                     localStorage.setItem('user', JSON.stringify(fakeUser));
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     reject(new Error("Failed to sign up"));
                 }
-            }, 800);
+            }, 50);
         });
     };
 
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(fakeUser);
                 localStorage.setItem('user', JSON.stringify(fakeUser));
                 resolve(fakeUser);
-            }, 800);
+            }, 50);
         });
     };
 
