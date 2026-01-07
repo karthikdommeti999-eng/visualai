@@ -108,9 +108,9 @@ export const AICoach = () => {
 
         } catch (error) {
             console.error("Chat Error:", error);
-            const errorMessage = error.message.includes('API key')
-                ? "AI Configuration Error: Missing API Key on the server. Please check Vercel settings."
-                : `Coach Connection Error: ${error.message || "The AI is currently resting. Please try again soon."}`;
+            const errorMessage = error.message.includes('OPENROUTER_API_KEY')
+                ? "Coach Configuration Error: Missing 'OPENROUTER_API_KEY' on the server. Please check Vercel settings."
+                : `Coach Connection Error: ${error.message || "The AI brain is unresponsive. Please try again soon."}`;
 
             setMessages(prev => [...prev, {
                 role: 'assistant',
