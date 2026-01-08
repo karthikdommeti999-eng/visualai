@@ -1,231 +1,201 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, Send, Volume2, StopCircle, Zap } from 'lucide-react';
+import { Mic, Send, Bot, Sparkles, Activity, Trash2, ArrowLeft, Zap } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { cn } from '../lib/utils';
 
 export const AICoach = () => {
     const navigate = useNavigate();
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: "Hello! I'm your AI Fitness Assistant. I can build workout plans, give nutrition advice, or correct your form. Speak or type to start!" }
+        {
+            role: 'assistant',
+            content: "SYSTEM ONLINE. I am V-AI (Visual Artificial Intelligence). I am calibrated for high-performance athletic coaching. State your biometric status or requested training protocol."
+        }
     ]);
     const [input, setInput] = useState('');
-    const [isListening, setIsListening] = useState(false);
-    const [isSpeaking, setIsSpeaking] = useState(false);
     const [loading, setLoading] = useState(false);
-
+    const [isListening, setIsListening] = useState(false);
     const messagesEndRef = useRef(null);
-    const containerRef = useRef(null);
 
-    const scrollToBottom = () => {
-        // Only scroll if near bottom or if it's a new user message
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
+    // Auto-scroll
     useEffect(() => {
-        scrollToBottom();
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, loading]);
 
-    // Speech to Text Setup
-    const startListening = () => {
-        if ('webkitSpeechRecognition' in window) {
-            const recognition = new window.webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.lang = 'en-US';
+    // Cleanup Audio on Unmount
+    useEffect(() => {
+        return () => window.speechSynthesis.cancel();
+    }, []);
 
-            recognition.onstart = () => {
-                setIsListening(true);
-            };
-
-            recognition.onend = () => {
-                setIsListening(false);
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                setInput(transcript);
-            };
-
-            recognition.start();
-        } else {
-            alert("Voice recognition not supported in this browser.");
-        }
-    };
-
-    // Text to Speech Setup
-    const speakText = (text) => {
-        if ('speechSynthesis' in window) {
-            if (isSpeaking) {
-                window.speechSynthesis.cancel();
-                setIsSpeaking(false);
-                return;
-            }
-
-            // Strip markdown symbols for speech (basic)
-            const cleanText = text.replace(/[*#_]/g, '');
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.onend = () => setIsSpeaking(false);
-            utterance.onstart = () => setIsSpeaking(true);
-
-            // Allow selecting voices if needed, defaulting to first available
-            const voices = window.speechSynthesis.getVoices();
-            // Try to find a "Google US English" or similar premium voice if available
-            const preferredVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.includes('en-US'));
-            if (preferredVoice) utterance.voice = preferredVoice;
-
-            window.speechSynthesis.speak(utterance);
-        }
+    const speak = (text) => {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text.replace(/[*#]/g, ''));
+        const voices = window.speechSynthesis.getVoices();
+        // Try to find a robotic or deep voice if possible, otherwise default
+        const preferred = voices.find(v => v.name.includes('Microsoft Mark') || v.name.includes('Google US English'));
+        if (preferred) utterance.voice = preferred;
+        utterance.rate = 1.05; // Slightly faster
+        utterance.pitch = 0.9; // Slightly lower
+        window.speechSynthesis.speak(utterance);
     };
 
     const handleSend = async () => {
-        const messageToSend = input.trim();
-        if (!messageToSend || loading) return;
-
-        const userMsg = { role: 'user', content: messageToSend };
-        setMessages(prev => [...prev, userMsg]);
+        if (!input.trim() || loading) return;
+        const text = input;
         setInput('');
+        setMessages(prev => [...prev, { role: 'user', content: text }]);
         setLoading(true);
 
         try {
-            // Call our Backend
-            const response = await fetch('/api/chat', {
+            const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: messageToSend })
+                body: JSON.stringify({ message: text })
             });
-            const data = await response.json();
 
-            if (data.error) {
-                throw new Error(data.error);
-            }
+            if (!res.ok) throw new Error("Neural Link Unstable");
 
-            const aiMsg = { role: 'assistant', content: data.reply };
-            setMessages(prev => [...prev, aiMsg]);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
 
-            // Auto speak reply
-            speakText(data.reply);
+            const reply = data.reply;
+            setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+            speak(reply);
 
-        } catch (error) {
-            console.error("Chat Error:", error);
-            const errorMessage = error.message.includes('OPENROUTER_API_KEY')
-                ? "Coach Configuration Error: Missing 'OPENROUTER_API_KEY' on the server. Please check Vercel settings."
-                : `Coach Connection Error: ${error.message || "The AI brain is unresponsive. Please try again soon."}`;
-
+        } catch (err) {
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: errorMessage
+                content: "⚠️ **CONNECTION ERROR**: Neural link to core processor failed. Please verify API credits or network status."
             }]);
         } finally {
             setLoading(false);
         }
     };
 
+    const startListening = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return alert("Browser does not support voice input.");
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.start();
+        setIsListening(true);
+
+        recognition.onresult = (e) => {
+            const transcript = e.results[0][0].transcript;
+            setInput(transcript);
+            setIsListening(false);
+        };
+        recognition.onerror = () => setIsListening(false);
+        recognition.onend = () => setIsListening(false);
+    };
+
     return (
-        <div className="h-full flex flex-col bg-dark-900">
-            {/* Custom Header for Full Screen Mode */}
-            <div className="p-4 border-b border-white/5 bg-dark-900/50 backdrop-blur-md flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                    <Zap className="text-brand-teal" size={24} />
-                    <h1 className="text-xl font-bold tracking-tight text-white">
-                        AI <span className="text-brand-teal">Coach</span>
-                    </h1>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-                    Exit
-                </Button>
-            </div>
+        <div className="flex flex-col h-screen bg-black text-white relative overflow-hidden font-mono">
+            {/* Background Grid */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,128,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,128,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
-            <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 flex flex-col h-full overflow-hidden">
-                <div ref={containerRef} className="flex-1 bg-dark-700/50 backdrop-blur-md rounded-3xl border border-white/5 p-6 mb-4 overflow-y-auto flex flex-col gap-4 custom-scrollbar">
-                    {messages.map((msg, idx) => (
-                        <div
-                            key={idx}
-                            className={cn(
-                                "max-w-[85%] p-4 rounded-2xl animate-fade-in shadow-sm",
-                                msg.role === 'user'
-                                    ? "self-end bg-brand-teal/10 text-brand-teal rounded-br-none border border-brand-teal/20"
-                                    : "self-start bg-dark-600/80 text-gray-200 rounded-bl-none border border-white/5"
-                            )}
-                        >
+            {/* Header */}
+            <header className="relative z-10 p-4 border-b border-white/10 bg-black/80 backdrop-blur-md flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand-teal/20 flex items-center justify-center border border-brand-teal animate-pulse-slow">
+                        <Bot className="text-brand-teal" size={24} />
+                    </div>
+                    <div>
+                        <h1 className="font-bold text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-brand-teal to-brand-neon">V-AI COACH / 2.0</h1>
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> SYSTEM ONLINE
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => setMessages([])} className="text-gray-500 hover:text-red-500">
+                        <Trash2 size={20} />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-gray-500 hover:text-white">
+                        <ArrowLeft size={20} />
+                    </Button>
+                </div>
+            </header>
+
+            {/* Chat Area */}
+            <main className="flex-1 overflow-y-auto p-4 space-y-6 relative z-10 custom-scrollbar">
+                {messages.map((msg, i) => (
+                    <div key={i} className={cn("flex gap-4 max-w-3xl mx-auto animate-fade-in", msg.role === 'user' ? "flex-row-reverse" : "")}>
+
+                        {/* Avatar */}
+                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border",
+                            msg.role === 'assistant' ? "bg-brand-teal/10 border-brand-teal text-brand-teal" : "bg-dark-800 border-white/20 text-gray-300")}>
+                            {msg.role === 'assistant' ? <Zap size={16} /> : <Activity size={16} />}
+                        </div>
+
+                        {/* Bubble */}
+                        <div className={cn("p-4 rounded-xl border max-w-[80%]",
+                            msg.role === 'assistant'
+                                ? "bg-dark-900/80 border-brand-teal/30 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
+                                : "bg-white/5 border-white/10")}>
                             {msg.role === 'assistant' && (
-                                <div className="flex items-center gap-2 mb-3 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/5 pb-2">
-                                    <Zap size={12} className="text-brand-neon" /> AI Coach
-                                </div>
+                                <div className="text-[10px] uppercase tracking-widest text-brand-teal/70 mb-2 font-bold">V-AI Cortex</div>
                             )}
-                            <div className="prose prose-invert prose-sm max-w-none leading-relaxed">
-                                <ReactMarkdown
-                                    components={{
-                                        // Custom styling for markdown elements
-                                        ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
-                                        ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-2" {...props} />,
-                                        li: ({ node, ...props }) => <li className="pl-1" {...props} />,
-                                        h1: ({ node, ...props }) => <h1 className="text-lg font-bold text-white mt-4 mb-2" {...props} />,
-                                        h2: ({ node, ...props }) => <h2 className="text-base font-bold text-white mt-3 mb-2" {...props} />,
-                                        h3: ({ node, ...props }) => <h3 className="text-sm font-bold text-gray-200 mt-2 mb-1" {...props} />,
-                                        strong: ({ node, ...props }) => <strong className="font-bold text-brand-teal" {...props} />,
-                                        p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                                    }}
-                                >
-                                    {msg.content}
-                                </ReactMarkdown>
+                            <div className="prose prose-invert prose-sm text-gray-200">
+                                <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
                         </div>
-                    ))}
-                    {loading && (
-                        <div className="self-start bg-dark-600 p-4 rounded-2xl rounded-bl-none border border-white/5">
-                            <div className="flex gap-2">
-                                <span className="w-2 h-2 bg-brand-neon rounded-full animate-bounce" />
-                                <span className="w-2 h-2 bg-brand-neon rounded-full animate-bounce delay-100" />
-                                <span className="w-2 h-2 bg-brand-neon rounded-full animate-bounce delay-200" />
-                            </div>
+                    </div>
+                ))}
+
+                {loading && (
+                    <div className="flex gap-4 max-w-3xl mx-auto">
+                        <div className="w-8 h-8 rounded-lg bg-brand-teal/10 border border-brand-teal text-brand-teal flex items-center justify-center animate-pulse">
+                            <Sparkles size={16} />
                         </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                </div>
+                        <div className="flex items-center gap-1 h-12">
+                            <span className="w-1 h-3 bg-brand-teal animate-[bounce_1s_infinite]" />
+                            <span className="w-1 h-5 bg-brand-teal animate-[bounce_1s_infinite_0.1s]" />
+                            <span className="w-1 h-3 bg-brand-teal animate-[bounce_1s_infinite_0.2s]" />
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
+            </main>
 
-                {/* Input Area */}
-                <div className="bg-dark-800 p-2 rounded-full border border-white/10 flex items-center gap-2 pl-4 shrink-0">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                        placeholder="Ask about workouts, diet, or form..."
-                        className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500"
-                    />
-
+            {/* Input Area */}
+            <footer className="p-4 relative z-10 border-t border-white/10 bg-black/90">
+                <div className="max-w-3xl mx-auto flex gap-3">
                     <button
                         onClick={startListening}
-                        className={cn(
-                            "p-3 rounded-full transition-all duration-300",
+                        className={cn("p-4 rounded-xl border transition-all",
                             isListening
-                                ? "bg-red-500/20 text-red-500 animate-pulse"
-                                : "hover:bg-white/10 text-gray-400 hover:text-white"
-                        )}
+                                ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse"
+                                : "bg-dark-800 border-white/10 text-gray-400 hover:border-brand-teal hover:text-brand-teal")}
                     >
-                        <Mic size={20} />
+                        <Mic size={24} />
                     </button>
+
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleSend()}
+                            placeholder="Input command parameters..."
+                            className="w-full h-full bg-dark-800 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-brand-teal font-mono"
+                        />
+                    </div>
 
                     <Button
                         onClick={handleSend}
-                        className="rounded-full w-12 h-12 p-0 flex items-center justify-center"
                         disabled={!input.trim() || loading}
+                        className="h-auto px-6 rounded-xl bg-brand-teal text-black hover:bg-brand-neon font-bold"
                     >
-                        <Send size={18} />
+                        <Send size={20} />
                     </Button>
                 </div>
-
-                <div className="text-center mt-4">
-                    <button
-                        onClick={() => speakText(messages[messages.length - 1]?.content || "")}
-                        className="text-xs text-gray-500 hover:text-brand-neon flex items-center justify-center gap-1 mx-auto"
-                    >
-                        {isSpeaking ? <StopCircle size={12} /> : <Volume2 size={12} />}
-                        {isSpeaking ? "Stop Speaking" : "Replay Last Message"}
-                    </button>
+                <div className="text-center mt-2">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-widest">Visual AI • Neural Network Active • v2.1.0</p>
                 </div>
-            </div>
+            </footer>
         </div>
     );
 };
